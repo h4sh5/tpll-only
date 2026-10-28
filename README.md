@@ -1,7 +1,7 @@
 # tpll-only
 
-`/tpll` and `/tpllcalc` for modern Fabric &mdash; the TerraPlusPlus teleport commands, without
-TerraPlusPlus' world generation, datasets or dependencies.
+`/tpll`, `/tpllcalc` and `/where` for modern Fabric &mdash; the TerraPlusPlus teleport commands,
+without TerraPlusPlus' world generation, datasets or dependencies.
 
 Run against **Minecraft 26.3** or **1.21.11** from the same sources.
 
@@ -14,6 +14,7 @@ everything the mod sends is a vanilla chat component.
 /tpll 48.858370 2.294481 200        ... at Y=200
 /tpll @a 35.6895 139.6917           everyone to where Tokyo would be
 /tpllcalc 48,858370 2,294481        just tell me the numbers, don't move me
+/where                              and what place am I standing on right now?
 ```
 
 Out of the box the mod uses the projection BuildTheEarth runs its own server on, so the coordinates
@@ -49,7 +50,42 @@ World position: 3235497.40 73.00 -4704415.43  (x y z; /tpll picks the surface it
 
 Run without coordinates, `/tpllcalc` goes the other way:
 `Steve is at 48.858370 2.294481 (X 2847558, Z -5051340) [ teleport here ]`, where the numbers copy
-to the clipboard and `[ teleport here ]` fills the command into your chat box.
+to the clipboard and `[ teleport here ]` fills the command into your chat box. [`/where`](#where) is
+that reverse direction on its own, with more in the answer.
+
+## `/where`
+
+`/where` is the reverse of `/tpll`: it takes the block you are standing on and reports the place on
+Earth it corresponds to. Nothing moves and no chunks are loaded, and it reads a position the server
+already has, so it needs no permission even when pointed at somebody else.
+
+```
+/where                     where in the real world am I?
+/where Steve               ... and where is Steve?
+/where @a                  ... and everybody?
+/where 3235497 -4704415    ... or at this X/Z, if nobody is around to stand on it
+```
+
+The answer is exactly the pair of numbers that would put you back where you started:
+
+```
+You is here on Earth:
+Real world: 47.051939 8.306423   47°03'06.98"N 8°18'23.12"E  [ copy ]  [ map ]
+In this world: 3235497.43 73.00 -4704415.46  (x y z in minecraft:overworld)  [ go back ]
+```
+
+| clicking | does |
+|---|---|
+| the decimal coordinates | copies `47.051939 8.306423` &mdash; paste it straight into `/tpll` |
+| `[ copy ]` | copies the decimal and the degrees/minutes/seconds form |
+| `[ map ]` | opens the spot on OpenStreetMap in your browser |
+| the world position | copies `3235497.43 73.00 -4704415.46` |
+| `[ go back ]` | puts `/tpll 47.051939 8.306423` in your chat box |
+
+Both coordinate forms are ones `/tpll` accepts, so the round trip closes in either direction. A
+position in a scaled dimension (the Nether is 1:8) is converted to overworld terms first, like a
+portal does &mdash; the map is a map of the overworld &mdash; and the answer says so. Positions the
+projection can't describe (the gaps around the Dymaxion net) say so instead of reporting nonsense.
 
 Both commands speak the coordinate syntax TerraPlusPlus always did
 ([`CoordinateParseUtils`](src/main/java/dev/tpllonly/geo/CoordinateParseUtils.java) is a port of
@@ -178,7 +214,7 @@ Supported Minecraft versions are declared per build as `>=26.3 <26.4` (respectiv
 ./gradlew geoTest             # coordinate parser + projections + config, plain JVM
 ./gradlew verifyNoClientRefs  # no net.minecraft.client references in the shipped classes
 ./gradlew check               # both of the above
-tools/server-test.sh 26.3     # boots a dedicated server and drives both commands from its console
+tools/server-test.sh 26.3     # boots a dedicated server and drives all three commands from its console
 ```
 
 `tools/server-test.sh` boots a dedicated server through Loom's `runServer` in a throwaway world,

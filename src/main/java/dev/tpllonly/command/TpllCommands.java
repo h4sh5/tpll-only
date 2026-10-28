@@ -7,6 +7,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.tpllonly.config.TpllConfig;
+import dev.tpllonly.geo.GeoFormatter;
 import dev.tpllonly.geo.LatLng;
 import dev.tpllonly.projection.GeographicProjection;
 import dev.tpllonly.projection.OutOfProjectionBoundsException;
@@ -39,7 +40,8 @@ import java.util.Locale;
  * <p><code>/tpllcalc</code> does all of the same maths and shows the resulting coordinates
  * (click to copy) without moving anybody, and without loading any chunks: only the X and Z it works
  * out are meaningful. With no arguments it works in reverse and reports the latitude/longitude of
- * where you (or someone else) are standing.
+ * where you (or someone else) are standing &mdash; <code>/where</code> ({@link WhereCommand}) is
+ * that reverse direction as a command of its own, with DMS and a map link in the answer.
  */
 public final class TpllCommands {
 
@@ -386,6 +388,10 @@ public final class TpllCommands {
 				.withStyle(ChatFormatting.GRAY)
 				.append(Component.literal("  -  show the coordinates of where you are standing")
 						.withStyle(ChatFormatting.DARK_GRAY)));
+		source.sendSystemMessage(Component.literal("  /where [player | x z]")
+				.withStyle(ChatFormatting.GRAY)
+				.append(Component.literal("  -  the same reverse lookup, with a map link and DMS as well")
+						.withStyle(ChatFormatting.DARK_GRAY)));
 		source.sendSystemMessage(Component.literal("Coordinates can be decimal (48.858370 2.294481), "
 						+ "DMS (48°51'30\"N 2°21'42\"E) or use hemisphere letters (N 48.858 E 2.294).")
 				.withStyle(ChatFormatting.DARK_GRAY)
@@ -405,7 +411,7 @@ public final class TpllCommands {
 	// ------------------------------------------------------------------------
 
 	private static String formatGeo(LatLng coordinates) {
-		return String.format(Locale.US, "%.6f %.6f", coordinates.getLatitude(), coordinates.getLongitude());
+		return GeoFormatter.decimal(coordinates);
 	}
 
 	private static String formatAltitude(double y) {

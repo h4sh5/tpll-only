@@ -3,7 +3,7 @@
   "id": "tpll-only",
   "version": "${version}",
   "name": "tpll-only",
-  "description": "Standalone /tpll (teleport by latitude and longitude) and /tpllcalc (show the resulting coordinates without teleporting), in the style of TerraPlusPlus. Singleplayer and multiplayer; on multiplayer only the server needs the mod.",
+  "description": "Standalone /tpll (teleport by latitude and longitude), /tpllcalc (show the resulting coordinates without teleporting) and /where (the reverse: what real-world place your coordinates are), in the style of TerraPlusPlus. Singleplayer and multiplayer; on multiplayer only the server needs the mod.",
   "license": "MIT",
   "environment": "*",
   "entrypoints": {

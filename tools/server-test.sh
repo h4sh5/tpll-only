@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Boots a dedicated server with the mod on the classpath and drives /tpll and /tpllcalc from its
+# Boots a dedicated server with the mod on the classpath and drives /tpll, /tpllcalc and /where from its
 # console, so both commands can be exercised without a client. The transcript is written to
 # out/server-test-<version>.log.
 #
@@ -84,6 +84,18 @@ send "tpll Steve 35.6895 139.6917"
 send "tpll 91 0"
 send "tpllcalc hello world"
 send "tpllcalc"
+
+# /where is the reverse of all of that. The console has no position of its own, so it gets the
+# X/Z form; the player forms are checked with a name and a selector.
+send "where"
+send "where 3235497.43 -4704415.46"
+send "where 3235497, -4704415, 70"
+send "where 2847557.88 -5051340.18"
+send "where -20000000 -20000000"
+send "where 0 0"
+send "where Steve"
+send "where @a"
+send "where hello world"
 sleep 5
 send "stop"
 
@@ -93,5 +105,5 @@ pkill -f net.minecraft.server.Main 2>/dev/null
 kill "${RUNNER}" 2>/dev/null
 
 echo "### ${MC}: transcript (full log: ${LOG})"
-grep -aE "\(tpll-only|Latitude / longitude|World position|Tplled|arrived|Usage:|Nothing to look up|permission" "${LOG}" \
+grep -aE "\(tpll-only|Latitude / longitude|World position|Tplled|arrived|Usage:|Nothing to look up|permission|on Earth|Real world|In this world|outside the mapped|nobody standing here|Nobody named" "${LOG}" \
 	| grep -av "<--\[HERE\]" | sed 's/^\[[^]]*\] \[[^]]*\] //'

@@ -4,6 +4,7 @@
 package dev.tpllonly;
 
 import dev.tpllonly.command.TpllCommands;
+import dev.tpllonly.command.WhereCommand;
 import dev.tpllonly.config.TpllConfig;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -29,9 +30,11 @@ public final class TpllOnlyMod implements ModInitializer {
 		// immediately rather than on first use
 		TpllConfig.get();
 
-		CommandRegistrationCallback.EVENT.register(
-				(dispatcher, registryAccess, environment) -> TpllCommands.register(dispatcher));
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			TpllCommands.register(dispatcher);
+			WhereCommand.register(dispatcher);
+		});
 
-		LOGGER.info("Registered /tpll and /tpllcalc");
+		LOGGER.info("Registered /tpll, /tpllcalc and /where");
 	}
 }

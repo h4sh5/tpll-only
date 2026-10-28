@@ -10,6 +10,8 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 
+import java.net.URI;
+
 /**
  * Small helpers for chat output that can be clicked to copy a value, run a command, or prefill the
  * chat box.
@@ -57,6 +59,17 @@ public final class Chat {
 				.withHoverEvent(new HoverEvent.ShowText(
 						Component.literal("Shift-click to insert: ").withStyle(ChatFormatting.YELLOW)
 								.append(Component.literal(command).withStyle(ChatFormatting.WHITE)))));
+	}
+
+	/**
+	 * @return {@code display}, styled so that clicking it opens {@code url} in the player's browser
+	 */
+	public static MutableComponent openUrl(Component display, String url) {
+		return styled(display, Style.EMPTY
+				.withClickEvent(new ClickEvent.OpenUrl(URI.create(url)))
+				.withHoverEvent(new HoverEvent.ShowText(
+						Component.literal("Click to open: ").withStyle(ChatFormatting.YELLOW)
+								.append(Component.literal(url).withStyle(ChatFormatting.WHITE)))));
 	}
 
 	/** underlines text that is interactive, so it reads as a button */

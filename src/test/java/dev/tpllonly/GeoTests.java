@@ -4,6 +4,7 @@
 package dev.tpllonly;
 
 import dev.tpllonly.geo.CoordinateParseUtils;
+import dev.tpllonly.geo.GeoFormatter;
 import dev.tpllonly.geo.LatLng;
 import dev.tpllonly.projection.GeographicProjection;
 import dev.tpllonly.projection.OutOfProjectionBoundsException;
@@ -29,6 +30,7 @@ public final class GeoTests {
 	public static void main(String[] args) throws Exception {
 		validCoordinates();
 		invalidCoordinates();
+		formatting();
 		projections();
 		dymaxion();
 		printReferencePositions();
@@ -140,6 +142,50 @@ public final class GeoTests {
 		invalid("N");
 		invalid("");
 		invalid(null);
+	}
+
+	/**
+	 * The two forms <code>/where</code> answers with. Both have to be readable by the parser again
+	 * (so a copy-paste goes back into <code>/tpll</code>), and the decimal one is the value a
+	 * <code>/where</code> &rarr; <code>/tpll</code> round trip is built out of.
+	 */
+	private static void formatting() {
+		LatLng paris = new LatLng(48.858370, 2.294481);
+		equalsString("decimal form", "48.858370 2.294481", GeoFormatter.decimal(paris));
+		equalsString("dms form", "48°51'30.13\"N 2°17'40.13\"E", GeoFormatter.dms(paris));
+
+		LatLng sydney = new LatLng(-33.8651, 151.2109);
+		equalsString("southern / decimal form", "-33.865100 151.210900", GeoFormatter.decimal(sydney));
+		equalsString("southern / dms form", "33°51'54.36\"S 151°12'39.24\"E", GeoFormatter.dms(sydney));
+
+		LatLng west = new LatLng(40.7128, -74.006);
+		equalsString("western hemisphere dms", "40°42'46.08\"N 74°00'21.60\"W", GeoFormatter.dms(west));
+
+		// 59.9996" would otherwise print as 60.00", which nothing can read back
+		equalsString("seconds roll over into the degree", "45°00'00.00\"N 0°00'00.00\"E",
+				GeoFormatter.dms(new LatLng(44.9999999, 0)));
+
+		// and every printed coordinate parses again
+		double[][] places = {
+				{ 48.858370, 2.294481 }, { -33.8651, 151.2109 }, { 40.7128, -74.006 },
+				{ 47.051939313728376, 8.306423216110339 }, { -89.5, -179.5 }, { 89.5, 179.5 },
+		};
+
+		for (double[] place : places) {
+			LatLng coordinates = new LatLng(place[0], place[1]);
+			for (String printed : new String[]{ GeoFormatter.decimal(coordinates), GeoFormatter.dms(coordinates) }) {
+				checks++;
+				LatLng reread = CoordinateParseUtils.parseVerbatimCoordinates(printed);
+				if (reread == null) {
+					fail("the parser doesn't accept what /where prints: \"" + printed + "\"");
+					continue;
+				}
+
+				// two decimals of arcseconds is ~60cm, so a printed coordinate is good to about a metre
+				equals("re-read latitude from " + printed, place[0], reread.getLatitude(), 1.0E-5);
+				equals("re-read longitude from " + printed, place[1], reread.getLongitude(), 1.0E-5);
+			}
+		}
 	}
 
 	private static void projections() throws OutOfProjectionBoundsException {
@@ -302,6 +348,13 @@ public final class GeoTests {
 		checks++;
 		if (Math.abs(expected - actual) > tolerance) {
 			fail(what + ": expected " + expected + ", got " + actual);
+		}
+	}
+
+	private static void equalsString(String what, String expected, String actual) {
+		checks++;
+		if (!expected.equals(actual)) {
+			fail(what + ": expected \"" + expected + "\", got \"" + actual + "\"");
 		}
 	}
 
