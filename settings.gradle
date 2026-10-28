@@ -1,0 +1,45 @@
+pluginManagement {
+	repositories {
+		mavenCentral()
+		gradlePluginPortal()
+		maven {
+			name = 'Fabric'
+			url = 'https://maven.fabricmc.net/'
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------------------------
+// Multi-version bootstrap.
+//
+// The mod source is written once, against Mojang's official mappings, and built against
+// whichever Minecraft profile is selected with `-Pmc=<version>` (see gradle.properties for the
+// default). Each profile lives in `versions/<version>.properties`.
+// ---------------------------------------------------------------------------------------------
+
+def requested = providers.gradleProperty('mc').getOrElse('26.3')
+
+def profileFile = rootDir.toPath().resolve('versions').resolve("${requested}.properties").toFile()
+if (!profileFile.exists()) {
+	def available = rootDir.toPath().resolve('versions').toFile().listFiles()
+			?.findAll { it.name.endsWith('.properties') }
+			?.collect { it.name - '.properties' }
+			?.sort()
+	throw new GradleException(
+			"Unknown Minecraft profile '${requested}'. Available profiles: ${available}")
+}
+
+def profile = new Properties()
+profileFile.withInputStream { stream -> profile.load(stream) }
+
+// Exposed to build.gradle as `gradle.mc` / `gradle.mcProfile`.
+gradle.ext.mc = requested
+// build.gradle's buildscript block is evaluated before project properties are visible, so it
+// picks the profile up from a system property set here.
+System.setProperty('tpll.mc', requested)
+gradle.ext.mcProfile = profile
+
+println "tpll-only: building for Minecraft ${requested} " +
+		"(loom=${profile.getProperty('loom_version')}, plugin=${profile.getProperty('loom_plugin')})"
+
+rootProject.name = 'tpll-only'

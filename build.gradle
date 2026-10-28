@@ -1,0 +1,165 @@
+// ---------------------------------------------------------------------------------------------
+// tpll-only - /tpll and /tpllcalc for Fabric, built against Mojang's official mappings so that
+// one source tree compiles for both the obfuscated 1.21.x line and the (unobfuscated) 26.x line.
+//
+// The Minecraft version to build against is selected with `-Pmc=<version>`; see `versions/`.
+// ---------------------------------------------------------------------------------------------
+
+buildscript {
+	// Loaded independently of settings.gradle: the buildscript block is evaluated before
+	// anything else, so it reads the selected profile straight off disk.
+	def selected = System.getProperty('tpll.mc') ?: '26.3'
+	def profileFile = new File(rootDir, "versions/${selected}.properties")
+	def loomVersion = '1.19.3'
+	if (profileFile.exists()) {
+		profileFile.withInputStream { stream ->
+			def loaded = new Properties()
+			loaded.load(stream)
+			loomVersion = loaded.getProperty('loom_version', loomVersion)
+		}
+	}
+
+	repositories {
+		mavenCentral()
+		gradlePluginPortal()
+		maven {
+			name = 'Fabric'
+			url = 'https://maven.fabricmc.net/'
+		}
+	}
+	dependencies {
+		classpath "net.fabricmc:fabric-loom:${loomVersion}"
+	}
+}
+
+// 1.21.x is obfuscated and needs Loom's remapping variant; 26.x ships a named jar and uses the
+// plain (no-remap) variant.
+apply plugin: gradle.mcProfile.getProperty('loom_plugin')
+
+def profile = gradle.mcProfile
+def mcVersion = gradle.mc
+
+group = 'dev.tpllonly'
+version = "${mod_version}+${mcVersion}"
+
+base {
+	archivesName = "tpll-only-${mcVersion}"
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		name = 'Fabric'
+		url = 'https://maven.fabricmc.net/'
+	}
+}
+
+loom {
+	mods {
+		'tpll-only' {
+			sourceSet sourceSets.main
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${profile.getProperty('minecraft_version')}"
+
+	// 26.x ships Mojang's names in the game jar itself, so no mappings artifact is needed.
+	if (Boolean.parseBoolean(profile.getProperty('uses_official_mojang_mappings', 'false'))) {
+		mappings loom.officialMojangMappings()
+	}
+
+	// The no-remap variant of Loom (26.x) doesn't need modImplementation, and doesn't define it.
+	def modConfiguration = profile.getProperty('mod_dependency_configuration', 'modImplementation')
+
+	add modConfiguration, "net.fabricmc:fabric-loader:${profile.getProperty('loader_version')}"
+
+	// The only runtime dependency: Fabric API's command module. It is bundled inside Fabric API,
+	// so a normal Fabric API install satisfies it.
+	add modConfiguration, "net.fabricmc.fabric-api:fabric-command-api-v2:${profile.getProperty('command_api_version')}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = 'UTF-8'
+	it.options.release = Integer.parseInt(profile.getProperty('java_release'))
+}
+
+java {
+	withSourcesJar()
+}
+
+processResources {
+	def expandProps = [
+			version            : project.version,
+			loader_version     : profile.getProperty('loader_version'),
+			minecraft_range    : profile.getProperty('minecraft_range'),
+			java_version       : profile.getProperty('java_release'),
+			command_api_version: profile.getProperty('command_api_min_version')
+	]
+
+	inputs.properties(expandProps)
+
+	filesMatching('fabric.mod.json') {
+		expand expandProps
+	}
+}
+
+jar {
+	manifest {
+		attributes(
+				'Implementation-Title'  : 'tpll-only',
+				'Implementation-Version': project.version,
+		)
+	}
+}
+
+// The mod is meant to be installable on a dedicated server alone, so nothing in the shared
+// source set may touch client-only classes.
+tasks.register('verifyNoClientRefs') {
+	group = 'verification'
+	description = 'Fails if any main source class references net.minecraft.client.'
+	dependsOn tasks.named('compileJava')
+
+	doLast {
+		def offenders = []
+		sourceSets.main.output.classesDirs.files.each { dir ->
+			if (!dir.exists()) return
+			dir.eachFileRecurse { file ->
+				if (file.name.endsWith('.class') && file.text.contains('net/minecraft/client/')) {
+					offenders << file.name
+				}
+			}
+		}
+		if (offenders) {
+			throw new GradleException("Client-only references found in server-side classes: ${offenders}")
+		}
+		logger.lifecycle('verifyNoClientRefs: no client references found.')
+	}
+}
+
+tasks.named('check') {
+	dependsOn tasks.named('verifyNoClientRefs')
+}
+
+// The JUnit-platform test task finds nothing to run: the port of TerraPlusPlus' own tests is
+// kept as a reference of what the upstream suite covers, and the checks that actually run here
+// live in dev.tpllonly.GeoTests (see geoTest below).
+tasks.named('test') {
+	enabled = false
+}
+
+// Plain-JVM checks for the coordinate parser and the projections: no Minecraft classes are
+// touched, so this runs in a normal JVM without a game or client install.
+def geoTest = tasks.register('geoTest', JavaExec) {
+	group = 'verification'
+	description = 'Runs the coordinate-parsing and projection checks (no game required)'
+	dependsOn tasks.named('testClasses')
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'dev.tpllonly.GeoTests'
+}
+
+tasks.named('check') {
+	dependsOn geoTest
+}
+
